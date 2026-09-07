@@ -21,29 +21,40 @@ The system also supports questions that do not require any tool.
 
 ## Current Architecture
 
-```text
 User
   |
   v
 LLM
   |
-  |-- No Tool Needed --------> Final Answer
+  |-- No Tool Needed ----------------------> Final Answer
   |
-  v
-Tool Call
+  |-- add
+  |     |
+  |     v
+  |   Python Function
   |
-  v
-Python Tool
-  |
-  v
-Tool Result
-  |
-  v
-LLM
-  |
-  v
-Final Answer
-```
+  |-- search_knowledge_base
+        |
+        v
+      HTTP POST
+        |
+        v
+      RAG Service
+        |
+        v
+   BGE + ChromaDB
+        |
+        v
+   Retrieved Chunks
+        |
+        v
+      Tool Result
+        |
+        v
+       LLM
+        |
+        v
+   Final Answer
 
 ## Current Tools
 
@@ -70,6 +81,19 @@ Python Tool Result:
 Final Answer:
 17.5 + 24.5 = 42.0
 ```
+
+### search_knowledge_base
+
+Searches the external RAG knowledge-base service for relevant document chunks.
+
+The Agent sends an HTTP request to the RAG `/search` endpoint and receives retrieval results containing:
+
+- document content
+- filename
+- chunk ID
+- vector distance
+
+The retrieved evidence is then returned to the LLM as a Tool Result for grounded answer generation.
 
 ## Tool Calling Flow
 
@@ -258,9 +282,9 @@ The project will be developed incrementally.
 
 ### Phase 2 - Multiple Tools
 
-- [ ] Tool Registry
-- [ ] Multiple tool selection
-- [ ] RAG knowledge-base tool
+- [x] Tool Registry
+- [x] Multiple tool selection
+- [x] RAG knowledge-base tool
 - [ ] Tool error handling
 
 ### Phase 3 - Agent Loop

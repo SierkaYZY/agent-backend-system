@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from agent.tool_schemas import TOOLS
-from agent.tools import add
+from agent.tool_registry import TOOL_REGISTRY
+
 
 # 初始化Deepseek APIkey
 load_dotenv()
@@ -40,6 +41,18 @@ def run_agent_once(question:str):
 
     messages = [
     {
+        "role": "system",
+        "content": """
+你是一个工具增强型 AI Agent。
+
+规则：
+1. 如果用户问题需要知识库资料，应调用 search_knowledge_base。
+2. 一旦调用 search_knowledge_base，最终回答只能依据该工具返回的资料。
+3. 如果工具返回的信息不足以回答问题，应明确说明“知识库资料不足”，不要使用自身知识补充事实。
+4. 不需要工具的问题可以直接回答。
+"""
+    },
+    {
     "role":"user",
     "content": question
         }
@@ -61,18 +74,16 @@ def run_agent_once(question:str):
     # 情况 1：LLM 请求调用工具
     if message.tool_calls:
         tool_call = message.tool_calls[0]
+        tool_name = tool_call.function.name
         arguments = json.loads(tool_call.function.arguments)
 
-        if tool_call.function.name == "add":
-            result = add(
-                arguments["a"],
-                arguments["b"]
-            )
-        else:
+        if tool_name  not in TOOL_REGISTRY:
             raise ValueError(
-                f"未知工具: {tool_call.function.name}"
-            )
-
+                            f"未知工具: {tool_name}"
+                        )
+        tool_function = TOOL_REGISTRY[tool_name]
+        result = tool_function(**arguments)
+            
         #  保存模型第一次的 Tool Call
         messages.append(message)
 
@@ -107,6 +118,7 @@ def run_agent_once(question:str):
 # 测试
 if __name__ == "__main__":
     answer = run_agent_once(
-        "请使用加法工具计算 17.5 + 24.5"
+        "请查询知识库，并仅根据知识库资料回答 What is RAG?"
     )
     print(answer)
+    
